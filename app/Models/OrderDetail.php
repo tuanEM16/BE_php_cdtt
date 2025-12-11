@@ -9,13 +9,25 @@ class OrderDetail extends Model
 {
     use HasFactory;
 
-    protected $table = 'order_detail'; 
-    public $timestamps = false;
+    protected $table = 'order_detail'; // Laravel tự nối prefix thành 'lcte_order_detail'
+    public $timestamps = false; // Bảng này không có created_at, updated_at
 
-    protected $fillable = ['order_id', 'product_id', 'price', 'qty', 'amount'];
+    protected $fillable = [
+        'order_id', 
+        'product_id', 
+        'price', 
+        'qty', 
+        'amount', 
+        'discount'
+    ];
 
-    public function product()
-    {
+    // Lấy thông tin sản phẩm
+    public function product() {
         return $this->belongsTo(Product::class, 'product_id', 'id');
+    }
+
+    // Lấy thông tin đơn hàng cha
+    public function order() {
+        return $this->belongsTo(Order::class, 'order_id', 'id');
     }
 }

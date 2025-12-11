@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\ProductSale;
-
+use App\Models\Product;
 class ProductSaleController extends Controller
 {
     // 1. Lấy danh sách
@@ -22,15 +22,29 @@ class ProductSaleController extends Controller
     // 2. Thêm mới
     public function store(Request $request)
     {
+        // Validate dữ liệu
         $request->validate([
-            'product_id' => 'required',
-            'price_sale' => 'required|numeric',
+            'product_id' => 'required|exists:product,id', // Sửa tên bảng cho khớp
+            'price_sale' => 'required|numeric|min:0',
             'date_begin' => 'required|date',
             'date_end' => 'required|date|after:date_begin',
+        ], [
+            'date_end.after' => 'Ngày kết thúc phải sau ngày bắt đầu',
+            'product_id.required' => 'Vui lòng chọn sản phẩm'
         ]);
 
+        // Kiểm tra logic giá
+        $product = Product::find($request->product_id);
+        if ($product && $request->price_sale >= $product->price_buy) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Giá giảm phải nhỏ hơn giá gốc (' . number_format($product->price_buy) . 'đ)'
+            ], 422);
+        }
+
+        // Lưu vào bảng product_sale
         $sale = new ProductSale();
-        $sale->name = $request->name ?? 'Khuyến mãi'; // Tên chương trình
+        $sale->name = $request->name ?? 'Khuyến mãi';
         $sale->product_id = $request->product_id;
         $sale->price_sale = $request->price_sale;
         $sale->date_begin = $request->date_begin;
@@ -40,14 +54,14 @@ class ProductSaleController extends Controller
         $sale->created_by = 1;
         $sale->save();
 
-        return response()->json(['success' => true, 'message' => 'Thêm khuyến mãi thành công', 'data' => $sale], 201);
+        return response()->json(['success' => true, 'message' => 'Đã thêm khuyến mãi thành công', 'data' => $sale], 201);
     }
-
     // 3. Xem chi tiết (để sửa)
     public function show($id)
     {
         $sale = ProductSale::find($id);
-        if (!$sale) return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
+        if (!$sale)
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
         return response()->json(['success' => true, 'data' => $sale], 200);
     }
 
@@ -55,7 +69,8 @@ class ProductSaleController extends Controller
     public function update(Request $request, $id)
     {
         $sale = ProductSale::find($id);
-        if (!$sale) return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
+        if (!$sale)
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
 
         $sale->name = $request->name;
         $sale->product_id = $request->product_id;
@@ -74,7 +89,8 @@ class ProductSaleController extends Controller
     public function destroy($id)
     {
         $sale = ProductSale::find($id);
-        if (!$sale) return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
+        if (!$sale)
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
         $sale->delete();
         return response()->json(['success' => true, 'message' => 'Xóa thành công'], 200);
     }
