@@ -5,11 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\ProductStore;
-use App\Models\Product; // Import Model Product để cập nhật tồn kho
 
 class ProductStoreController extends Controller
 {
-    // 1. Lấy danh sách lịch sử nhập
+    // 1. Lấy danh sách phiếu nhập kho
     public function index()
     {
         $stores = ProductStore::with('product')
@@ -19,7 +18,18 @@ class ProductStoreController extends Controller
         return response()->json(['success' => true, 'data' => $stores], 200);
     }
 
-    // 2. Nhập hàng mới
+    // 2. Xem chi tiết 1 phiếu nhập (Dùng cho Edit)
+    public function show($id)
+    {
+        $store = ProductStore::with('product.category')->find($id);
+
+        if (!$store) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy phiếu nhập'], 404);
+        }
+        return response()->json(['success' => true, 'data' => $store], 200);
+    }
+
+    // 3. Tạo phiếu nhập mới (Store)
     public function store(Request $request)
     {
         $request->validate([
@@ -28,39 +38,45 @@ class ProductStoreController extends Controller
             'qty' => 'required|numeric|min:1',
         ]);
 
-        // A. Lưu vào lịch sử nhập kho (bảng product_store)
         $store = new ProductStore();
         $store->product_id = $request->product_id;
         $store->price_root = $request->price_root;
         $store->qty = $request->qty;
         $store->status = 1;
         $store->created_at = now();
-        $store->created_by = 1;
+        $store->created_by = 1; // Tạm set cứng admin ID = 1
         $store->save();
-
-        // B. Cộng dồn số lượng vào bảng sản phẩm chính (bảng product)
-        $product = Product::find($request->product_id);
-        if ($product) {
-            $product->qty = $product->qty + $request->qty; // Cộng thêm số lượng vừa nhập
-            
-            // Cập nhật lại giá nhập (nếu cần) hoặc chỉ cập nhật số lượng
-            // $product->price_buy = ... (Thường giá bán không đổi theo giá nhập ngay)
-            
-            $product->updated_at = now();
-            $product->save();
-        }
 
         return response()->json(['success' => true, 'message' => 'Nhập kho thành công', 'data' => $store], 201);
     }
 
-    // 3. Xóa lịch sử nhập (Cẩn thận: Xóa lịch sử có nên trừ lại kho không? Thường là KHÔNG hoặc cấm xóa)
+    // 4. Cập nhật phiếu nhập (Update)
+    public function update(Request $request, $id)
+    {
+        $store = ProductStore::find($id);
+        if (!$store) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy phiếu nhập'], 404);
+        }
+
+        $store->price_root = $request->price_root;
+        $store->qty = $request->qty;
+        $store->updated_by = 1;
+        $store->updated_at = now();
+        $store->save();
+
+        return response()->json(['success' => true, 'message' => 'Cập nhật thành công'], 200);
+    }
+
+    // 5. Xóa phiếu nhập (Destroy)
     public function destroy($id)
     {
         $store = ProductStore::find($id);
-        if (!$store) return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
-        
-        // Ở đây tôi chỉ xóa lịch sử, không trừ lại kho (tùy nghiệp vụ của bạn)
+        if (!$store) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy phiếu nhập'], 404);
+        }
+
         $store->delete();
-        return response()->json(['success' => true, 'message' => 'Xóa lịch sử thành công'], 200);
+        
+        return response()->json(['success' => true, 'message' => 'Xóa thành công'], 200);
     }
 }

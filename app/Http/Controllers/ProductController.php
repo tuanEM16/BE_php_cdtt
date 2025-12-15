@@ -20,6 +20,7 @@ class ProductController extends Controller
         $products = Product::where('status', '!=', 0)
             ->with('category')
             ->orderBy('created_at', 'DESC')
+            ->withSum('productStores as qty', 'qty')
             ->paginate(20);
 
         return response()->json([

@@ -52,4 +52,8 @@ class Product extends Model
     {
         return $this->hasMany(ProductAttribute::class, 'product_id', 'id');
     }
+    public function productStores()
+    {
+        return $this->hasMany(ProductStore::class, 'product_id', 'id');
+    }
 }
