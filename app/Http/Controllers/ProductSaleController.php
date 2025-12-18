@@ -20,53 +20,75 @@ class ProductSaleController extends Controller
         return response()->json(['success' => true, 'data' => $sales], 200);
     }
 
-    // 2. Thêm mới
+
+// 2. Thêm mới
     public function store(Request $request)
     {
-        // Validate dữ liệu
+        // 1. Validate dữ liệu đầu vào cơ bản
         $request->validate([
-            'name' => 'required', // Tên chương trình
+            'name' => 'required',
             'date_begin' => 'required|date',
-            'date_end' => 'required|date|after:date_begin',
-            'products' => 'required|array|min:1', // Mảng các sản phẩm được chọn
+            'date_end' => 'required|date|after_or_equal:date_begin', // Sửa after thành after_or_equal cho chuẩn
+            'products' => 'required|array|min:1',
             'products.*.product_id' => 'required',
             'products.*.price_sale' => 'required|numeric|min:0',
         ], [
             'products.required' => 'Vui lòng chọn ít nhất 1 sản phẩm',
-            'date_end.after' => 'Ngày kết thúc phải sau ngày bắt đầu'
+            'date_end.after_or_equal' => 'Ngày kết thúc phải sau hoặc bằng ngày bắt đầu'
         ]);
 
-        DB::beginTransaction(); // Bắt đầu giao dịch
+        DB::beginTransaction();
         try {
             $count = 0;
-            // Duyệt qua từng sản phẩm được gửi lên từ Frontend
+
+            // Duyệt qua từng sản phẩm
             foreach ($request->products as $item) {
-                // Kiểm tra giá gốc (Optional)
                 $product = Product::find($item['product_id']);
                 if (!$product)
                     continue;
 
-                // Tạo khuyến mãi cho từng sản phẩm
+                // --- [START] KIỂM TRA TRÙNG NGÀY KHUYẾN MÃI ---
+
+                // Logic: Tìm xem trong DB đã có bản ghi Sale nào của SP này
+                // mà thời gian bị chồng lấn với thời gian đang nhập không?
+                $conflict = ProductSale::where('product_id', $item['product_id'])
+                    ->where(function ($query) use ($request) {
+                        $query->where('date_begin', '<=', $request->date_end)
+                            ->where('date_end', '>=', $request->date_begin);
+                    })
+                    ->first();
+
+                // Nếu tìm thấy => Báo lỗi và Rollback ngay lập tức
+                if ($conflict) {
+                    throw new \Exception(
+                        "Sản phẩm '" . $product->name . "' đang có khuyến mãi trùng đợt này ("
+                        . date('d/m/Y', strtotime($conflict->date_begin)) . " - "
+                        . date('d/m/Y', strtotime($conflict->date_end)) . ")."
+                    );
+                }
+                // --- [END] KIỂM TRA TRÙNG NGÀY KHUYẾN MÃI ---
+
+                // Nếu không trùng thì tạo mới
                 ProductSale::create([
                     'name' => $request->name,
                     'product_id' => $item['product_id'],
-                    'price_sale' => $item['price_sale'], // Giá đã tính từ frontend
+                    'price_sale' => $item['price_sale'],
                     'date_begin' => $request->date_begin,
                     'date_end' => $request->date_end,
                     'status' => $request->status ?? 1,
-                    'created_by' => 1
+                    'created_by' => 1 // Nên sửa thành Auth::id() nếu có đăng nhập
                 ]);
                 $count++;
             }
 
-            DB::commit(); // Lưu tất cả
+            DB::commit();
             return response()->json(['success' => true, 'message' => "Đã tạo khuyến mãi cho $count sản phẩm"], 201);
 
         } catch (\Exception $e) {
-            DB::rollBack(); // Có lỗi thì hủy hết
-            return response()->json(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()], 500);
+            DB::rollBack(); // Hủy toàn bộ thao tác nếu có 1 sản phẩm bị lỗi
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422); // Trả về mã 422 (Unprocessable Entity)
         }
-    }    // 3. Xem chi tiết (để sửa)
+    }
     public function show($id)
     {
         $sale = ProductSale::find($id);

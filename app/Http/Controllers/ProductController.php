@@ -7,14 +7,70 @@ use Illuminate\Http\Request;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductAttribute;
-use App\Models\ProductStore; // Import bảng kho
+use App\Models\ProductStore;
+use App\Models\ProductSale; // Import bảng kho
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 class ProductController extends Controller
 {
-    // 1. GET: Lấy danh sách
+    public function product_new(Request $request)
+    {
+        // Thêm dòng này để xem lỗi chi tiết nếu có
+        try {
+            $now = now();
+            $limit = $request->limit ?? 10;
+
+            $productStore = ProductStore::select('product_id', DB::raw('SUM(qty) as total_qty'))
+                ->groupBy('product_id');
+
+            $productSale = ProductSale::select('product_id', 'price_sale')
+                ->where('date_begin', '<=', $now)
+                ->where('date_end', '>=', $now);
+
+            $products = Product::query()
+                ->joinSub($productStore, 'ps', function ($join) {
+                    $join->on('product.id', '=', 'ps.product_id') // <--- Đã sửa thành products
+                        ->where('ps.total_qty', '>', 0);
+                })
+
+                ->leftJoinSub($productSale, 'psale', function ($join) {
+                    $join->on('product.id', '=', 'psale.product_id'); // <--- Đã sửa thành products
+                })
+
+                ->select(
+                    'products.id',   
+                    'product.name',        
+                    'product.slug',         
+                    'product.thumbnail',    
+                    'product.price_buy',    
+                    'psale.price_sale',      // Giá sale từ bảng psale
+                    'ps.total_qty'           // Số lượng từ bảng ps
+                )
+                ->with('image') // Load thêm ảnh nếu cần
+                ->where('product.status', 1)
+                ->orderBy('product.created_at', 'DESC')
+                ->limit($limit)
+                ->get();
+
+            // --- SỬA LỖI 2: Xóa foreach echo, thay bằng return JSON ---
+            return response()->json([
+                'success' => true,
+                'message' => 'Tải danh sách thành công',
+                'data' => [
+                    'data' => $products
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            // Bắt lỗi để hiện ra màn hình xem cho dễ
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi Server: ' . $e->getMessage()
+            ], 500);
+        }
+    }
     public function index()
     {
         $products = Product::where('status', '!=', 0)
@@ -33,7 +89,7 @@ class ProductController extends Controller
     // 2. POST: Thêm mới
     public function store(Request $request)
     {
-        DB::beginTransaction(); 
+        DB::beginTransaction();
         try {
             // A. Lưu bảng Product (KHÔNG CÓ qty)
             $product = new Product();
@@ -76,7 +132,7 @@ class ProductController extends Controller
                     $ext = $file->getClientOriginalExtension();
                     $filename = time() . '_gallery_' . $key . '.' . $ext;
                     $file->move(public_path('images/product'), $filename);
-                    
+
                     ProductImage::insert([
                         'product_id' => $product->id,
                         'image' => $filename,
@@ -91,7 +147,7 @@ class ProductController extends Controller
                 $attributes = json_decode($request->attributes_json, true);
                 if (is_array($attributes)) {
                     foreach ($attributes as $attr) {
-                        if(!empty($attr['attribute_id']) && !empty($attr['value'])) {
+                        if (!empty($attr['attribute_id']) && !empty($attr['value'])) {
                             ProductAttribute::insert([
                                 'product_id' => $product->id,
                                 'attribute_id' => $attr['attribute_id'],
@@ -114,34 +170,35 @@ class ProductController extends Controller
     // 3. GET: Chi tiết
 // File: app/Http/Controllers/ProductController.php
 
-public function show($id)
-{
-    // Lấy sản phẩm kèm các quan hệ
-    $product = Product::with(['category', 'product_images', 'product_attributes.attribute'])->find($id);
+    public function show($id)
+    {
+        // Lấy sản phẩm kèm các quan hệ
+        $product = Product::with(['category', 'product_images', 'product_attributes.attribute'])->find($id);
 
-    if (!$product) {
-        return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
+        if (!$product) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
+        }
+
+        // --- TÍNH TOÁN TỒN KHO ---
+        // Cách 1: Nếu bạn muốn lấy tổng số lượng ĐÃ NHẬP (từ bảng product_store)
+        $importedQty = \App\Models\ProductStore::where('product_id', $id)->sum('qty');
+
+        // (Nâng cao): Nếu muốn tính TỒN KHO THỰC TẾ = Tổng nhập - Tổng bán
+        // $soldQty = \App\Models\OrderDetail::where('product_id', $id)->sum('qty');
+        // $currentStock = $importedQty - $soldQty;
+
+        // Gán vào biến qty để trả về Frontend (Frontend đang dùng biến này)
+        $product->qty = $importedQty;
+        // -------------------------
+
+        return response()->json(['success' => true, 'data' => $product], 200);
     }
-
-    // --- TÍNH TOÁN TỒN KHO ---
-    // Cách 1: Nếu bạn muốn lấy tổng số lượng ĐÃ NHẬP (từ bảng product_store)
-    $importedQty = \App\Models\ProductStore::where('product_id', $id)->sum('qty');
-    
-    // (Nâng cao): Nếu muốn tính TỒN KHO THỰC TẾ = Tổng nhập - Tổng bán
-    // $soldQty = \App\Models\OrderDetail::where('product_id', $id)->sum('qty');
-    // $currentStock = $importedQty - $soldQty;
-
-    // Gán vào biến qty để trả về Frontend (Frontend đang dùng biến này)
-    $product->qty = $importedQty; 
-    // -------------------------
-
-    return response()->json(['success' => true, 'data' => $product], 200);
-}
     // 4. PUT: Cập nhật
     public function update(Request $request, $id)
     {
         $product = Product::find($id);
-        if (!$product) return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
+        if (!$product)
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
 
         DB::beginTransaction();
         try {
@@ -157,7 +214,8 @@ public function show($id)
 
             if ($request->hasFile('thumbnail')) {
                 $oldPath = public_path('images/product/' . $product->thumbnail);
-                if ($product->thumbnail && File::exists($oldPath)) File::delete($oldPath);
+                if ($product->thumbnail && File::exists($oldPath))
+                    File::delete($oldPath);
 
                 $file = $request->file('thumbnail');
                 $ext = $file->getClientOriginalExtension();
@@ -169,7 +227,7 @@ public function show($id)
             $product->save();
 
             if ($request->filled('qty') && $request->qty > 0) {
-                 ProductStore::insert([
+                ProductStore::insert([
                     'product_id' => $product->id,
                     'qty' => $request->qty,
                     'price_root' => $request->price_root ?? 0,
@@ -185,7 +243,7 @@ public function show($id)
                     $ext = $file->getClientOriginalExtension();
                     $filename = time() . '_gallery_upd_' . $key . '.' . $ext;
                     $file->move(public_path('images/product'), $filename);
-                    
+
                     ProductImage::insert([
                         'product_id' => $product->id,
                         'image' => $filename,
@@ -201,7 +259,7 @@ public function show($id)
                 $attributes = json_decode($request->attributes_json, true);
                 if (is_array($attributes)) {
                     foreach ($attributes as $attr) {
-                        if(!empty($attr['attribute_id']) && !empty($attr['value'])) {
+                        if (!empty($attr['attribute_id']) && !empty($attr['value'])) {
                             ProductAttribute::insert([
                                 'product_id' => $product->id,
                                 'attribute_id' => $attr['attribute_id'],
@@ -225,19 +283,22 @@ public function show($id)
     public function destroy($id)
     {
         $product = Product::find($id);
-        if (!$product) return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
+        if (!$product)
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
 
         DB::beginTransaction();
         try {
             // Xóa ảnh thumbnail
             $thumbPath = public_path('images/product/' . $product->thumbnail);
-            if ($product->thumbnail && File::exists($thumbPath)) File::delete($thumbPath);
+            if ($product->thumbnail && File::exists($thumbPath))
+                File::delete($thumbPath);
 
             // Xóa ảnh gallery
             $galleryImages = ProductImage::where('product_id', $id)->get();
             foreach ($galleryImages as $img) {
                 $galleryPath = public_path('images/product/' . $img->image);
-                if (File::exists($galleryPath)) File::delete($galleryPath);
+                if (File::exists($galleryPath))
+                    File::delete($galleryPath);
             }
             ProductImage::where('product_id', $id)->delete();
 
