@@ -9,7 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Category;
 use App\Models\ProductImage;
 use App\Models\ProductAttribute;
-
+use App\Models\ProductStore;
+use App\Models\ProductSale;
 class Product extends Model
 {
     use HasFactory;
@@ -55,5 +56,13 @@ class Product extends Model
     public function productStores()
     {
         return $this->hasMany(ProductStore::class, 'product_id', 'id');
+    }
+    public function sale()
+    {
+        return $this->hasOne(ProductSale::class, 'product_id', 'id')
+            ->where('date_begin', '<=', now()) // Đã bắt đầu
+            ->where('date_end', '>=', now())   // Chưa kết thúc
+            ->where('status', 1)               // Đang bật
+            ->orderBy('price_sale', 'ASC');    // Lấy giá giảm sâu nhất nếu trùng đợt
     }
 }
