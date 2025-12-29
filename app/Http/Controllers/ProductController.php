@@ -8,6 +8,8 @@ use App\Models\Product;
 use App\Models\ProductStore;
 use App\Models\ProductImage;
 use App\Models\ProductAttribute;
+use App\Models\ProductSale;
+
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -20,29 +22,45 @@ class ProductController extends Controller
         try {
             $limit = $request->limit ?? 10;
 
-            // Dùng with('sale') để Laravel tự lấy giá sale hợp lệ
-            // Dùng withSum để Laravel tự cộng tồn kho
+            // --- QUERY DATABASE ---
             $products = Product::where('status', 1)
-                ->with(['product_images', 'sale']) // <--- QUAN TRỌNG: Lấy kèm Sale
-                ->withSum('productStores as total_qty', 'qty') // <--- QUAN TRỌNG: Tính tổng tồn kho luôn
-                ->orderBy('created_at', 'DESC')
+                ->with(['product_images', 'sale'])
+                ->withSum('productStores as total_qty', 'qty')
+
+                // [LOGIC MỚI] Tạo một cột ảo 'is_active_sale' để kiểm tra có sale hay không
+                ->addSelect([
+                    'is_active_sale' => ProductSale::selectRaw('COUNT(*)')
+                        ->whereColumn('product_id', 'product.id') // Lưu ý: 'product.id' là tên bảng sản phẩm của bạn
+                        ->where('date_begin', '<=', now())
+                        ->where('date_end', '>=', now())
+                        ->where('status', 1)
+                ])
+
+                // [ƯU TIÊN 1] Sắp xếp theo có Sale trước (is_active_sale giảm dần)
+                ->orderBy('is_active_sale', 'DESC')
+
+                // [ƯU TIÊN 2] Sau đó mới sắp xếp theo ID mới nhất
+                ->orderBy('id', 'DESC')
+
                 ->get();
 
             $finalResult = [];
 
             foreach ($products as $product) {
-                // 1. Kiểm tra tồn kho (Biến total_qty được tạo ra từ withSum ở trên)
-                if ($product->total_qty <= 0) {
-                    continue; // Hết hàng thì bỏ qua
+                // 1. Logic lọc tồn kho (Giữ nguyên)
+                $stock = $product->total_qty ?? 0;
+                if ($stock <= 0) {
+                    continue;
                 }
 
-                // 2. Xử lý giá Sale để trả về Frontend cho dễ dùng
-                // Nếu có sale thì lấy giá sale, không thì null
+                // 2. Xử lý giá
                 $product->price_sale = $product->sale ? $product->sale->price_sale : null;
-                
-                // (Tùy chọn) Tính luôn % giảm giá để Frontend chỉ việc hiện
-                if($product->price_sale) {
+
+                // Tính % giảm giá
+                if ($product->price_sale && $product->price_buy > 0) {
                     $product->discount_percent = round((($product->price_buy - $product->price_sale) / $product->price_buy) * 100);
+                } else {
+                    $product->discount_percent = 0;
                 }
 
                 $finalResult[] = $product;
@@ -64,7 +82,6 @@ class ProductController extends Controller
             return response()->json(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()], 500);
         }
     }
-
     // 2. API: Lấy danh sách tất cả (cho trang Product Page)
     public function index()
     {
@@ -119,7 +136,9 @@ class ProductController extends Controller
                     'product_id' => $product->id,
                     'qty' => $request->qty,
                     'price_root' => $request->price_root ?? 0,
-                    'created_at' => now(), 'created_by' => 1, 'status' => 1
+                    'created_at' => now(),
+                    'created_by' => 1,
+                    'status' => 1
                 ]);
             }
 
@@ -131,7 +150,7 @@ class ProductController extends Controller
                     ProductImage::insert(['product_id' => $product->id, 'image' => $filename]);
                 }
             }
-            
+
             // Xử lý thuộc tính (giữ nguyên logic của mày)
             if ($request->has('attributes_json')) {
                 $attributes = json_decode($request->attributes_json, true);
@@ -164,7 +183,7 @@ class ProductController extends Controller
         if (!$product) {
             return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
         }
-        
+
         $product->qty = ProductStore::where('product_id', $id)->sum('qty');
         $product->price_sale = $product->sale ? $product->sale->price_sale : null; // Gán ra ngoài cho tiện
 
@@ -175,7 +194,8 @@ class ProductController extends Controller
     {
         // Logic update giữ nguyên như cũ, chỉ rút gọn cho đỡ dài dòng
         $product = Product::find($id);
-        if (!$product) return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
+        if (!$product)
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
 
         DB::beginTransaction();
         try {
@@ -190,7 +210,8 @@ class ProductController extends Controller
 
             if ($request->hasFile('thumbnail')) {
                 $oldPath = public_path('images/product/' . $product->thumbnail);
-                if ($product->thumbnail && File::exists($oldPath)) File::delete($oldPath);
+                if ($product->thumbnail && File::exists($oldPath))
+                    File::delete($oldPath);
                 $file = $request->file('thumbnail');
                 $filename = time() . '_thumb_upd.' . $file->getClientOriginalExtension();
                 $file->move(public_path('images/product'), $filename);
@@ -201,9 +222,9 @@ class ProductController extends Controller
             if ($request->filled('qty') && $request->qty > 0) {
                 ProductStore::insert(['product_id' => $product->id, 'qty' => $request->qty, 'created_at' => now(), 'status' => 1]);
             }
-            
+
             // Xử lý Gallery và Attribute giữ nguyên...
-             if ($request->hasFile('product_images')) {
+            if ($request->hasFile('product_images')) {
                 foreach ($request->file('product_images') as $key => $file) {
                     $filename = time() . '_gallery_upd_' . $key . '.' . $file->getClientOriginalExtension();
                     $file->move(public_path('images/product'), $filename);
@@ -216,7 +237,7 @@ class ProductController extends Controller
                 $attributes = json_decode($request->attributes_json, true);
                 if (is_array($attributes)) {
                     foreach ($attributes as $attr) {
-                         if (!empty($attr['attribute_id']) && !empty($attr['value'])) {
+                        if (!empty($attr['attribute_id']) && !empty($attr['value'])) {
                             ProductAttribute::insert(['product_id' => $product->id, 'attribute_id' => $attr['attribute_id'], 'value' => $attr['value']]);
                         }
                     }
@@ -235,7 +256,8 @@ class ProductController extends Controller
     {
         // Logic xóa giữ nguyên
         $product = Product::find($id);
-        if (!$product) return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
+        if (!$product)
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
         DB::beginTransaction();
         try {
             if ($product->thumbnail && File::exists(public_path('images/product/' . $product->thumbnail))) {
@@ -243,7 +265,8 @@ class ProductController extends Controller
             }
             $galleryImages = ProductImage::where('product_id', $id)->get();
             foreach ($galleryImages as $img) {
-                if (File::exists(public_path('images/product/' . $img->image))) File::delete(public_path('images/product/' . $img->image));
+                if (File::exists(public_path('images/product/' . $img->image)))
+                    File::delete(public_path('images/product/' . $img->image));
             }
             ProductImage::where('product_id', $id)->delete();
             ProductAttribute::where('product_id', $id)->delete();
