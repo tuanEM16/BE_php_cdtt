@@ -17,6 +17,7 @@ use App\Http\Controllers\AttributeController;
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\OrderDetailController;
 Route::get('/product/new', [ProductController::class, 'product_new']);
+
 Route::apiResource('banner', BannerController::class);
 Route::apiResource('topic', TopicController::class);
 Route::apiResource('post', PostController::class);
@@ -32,6 +33,16 @@ Route::apiResource('productsale', ProductSaleController::class);
 Route::apiResource('productimage', ProductImageController::class);
 Route::apiResource('productstore', ProductStoreController::class);
 Route::apiResource('orderdetail', OrderDetailController::class);
+
 Route::get('config', [ConfigController::class, 'index']);
 Route::post('config/update', [ConfigController::class, 'update']);
+
+Route::post('/login', [UserController::class, 'login']);
+Route::post('/register', [UserController::class, 'register']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [UserController::class, 'logout']);
+    Route::get('/profile', [UserController::class, 'profile']);
+    Route::apiResource('user', UserController::class); 
+});
 
