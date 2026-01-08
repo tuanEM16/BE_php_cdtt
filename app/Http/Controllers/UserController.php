@@ -8,8 +8,12 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule; // Để check unique email khi update
+
 class UserController extends Controller
 {
+    // --- AUTHENTICATION ---
+
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -45,9 +49,10 @@ class UserController extends Controller
 
     public function register(Request $request)
     {
+        // Validation chặt chẽ hơn
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:user',
+            'email' => 'required|string|email|max:255|unique:user', // Lưu ý tên bảng là user
             'password' => 'required|string|min:6',
             'phone' => 'nullable|string|max:20',
         ]);
@@ -60,12 +65,12 @@ class UserController extends Controller
         $user->name = $request->name;
         $user->email = $request->email;
         $user->phone = $request->phone;
-        $user->username = $request->username ?? strstr($request->email, '@', true); // Tự tạo username từ email nếu ko có
+        // Tách lấy username từ email nếu không nhập
+        $user->username = $request->username ?? explode('@', $request->email)[0]; 
         $user->password = Hash::make($request->password);
-        $user->roles = 'customer';
+        $user->roles = 'customer'; // Mặc định đăng ký là khách hàng
         $user->status = 1;
         $user->created_at = now();
-
         $user->save();
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -84,50 +89,56 @@ class UserController extends Controller
         return response()->json(['success' => true, 'message' => 'Đăng xuất thành công']);
     }
 
-    // 4. Lấy thông tin bản thân (Profile)
     public function profile(Request $request)
     {
         return response()->json(['success' => true, 'data' => $request->user()]);
     }
+
+    // --- CRUD (Dành cho Admin - Cần bảo vệ bằng Route Middleware) ---
+
     public function index(Request $request) 
     {
-        $currentUser = $request->user(); 
-
-        if ($currentUser->roles != 'admin') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Bạn không có quyền truy cập dữ liệu này'
-            ], 403);
-        }
-        // -----------------------------
-
-        $users = User::where('status', '!=', 0)
-            ->orderBy('created_at', 'DESC')
-            ->paginate(20);
+        // Không cần check role ở đây nữa nếu đã dùng Middleware ở route
+        // Lấy tất cả user trừ những người bị xóa mềm (nếu có dùng softDelete)
+        $users = User::orderBy('created_at', 'DESC')->paginate(20);
 
         return response()->json(['success' => true, 'message' => 'Tải danh sách thành công', 'data' => $users], 200);
     }
 
     public function store(Request $request)
     {
+        // 1. Validate dữ liệu
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:user',
+            'password' => 'required|min:6',
+            'roles' => 'required|in:admin,customer', // Chỉ cho phép các role hợp lệ
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048' // Validate ảnh
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
         $user = new User();
         $user->name = $request->name;
         $user->email = $request->email;
         $user->phone = $request->phone;
-        $user->username = $request->username;
+        $user->username = $request->username ?? explode('@', $request->email)[0];
         $user->password = Hash::make($request->password);
-        $user->roles = $request->roles ?? 'customer';
+        $user->roles = $request->roles;
         $user->status = $request->status ?? 1;
         $user->created_at = now();
-        $user->created_by = 1;
+        // Lấy ID người đang đăng nhập thực hiện hành động này
+        $user->created_by = Auth::id() ?? 1; 
 
-        // Upload Avatar
-        if ($request->hasFile('avatar')) {
-            $file = $request->file('avatar');
+        // Upload Avatar (Sửa lại tên cột thống nhất là image)
+        if ($request->hasFile('image')) { // Frontend gửi lên field tên là 'image'
+            $file = $request->file('image');
             $ext = $file->getClientOriginalExtension();
             $filename = time() . '.' . $ext;
             $file->move(public_path('images/user'), $filename);
-            $user->avatar = $filename;
+            $user->image = $filename; // Lưu vào cột image
         }
 
         $user->save();
@@ -135,7 +146,6 @@ class UserController extends Controller
         return response()->json(['success' => true, 'message' => 'Thêm thành công', 'data' => $user], 201);
     }
 
-    // 3. Xem chi tiết
     public function show($id)
     {
         $user = User::find($id);
@@ -144,38 +154,50 @@ class UserController extends Controller
         return response()->json(['success' => true, 'data' => $user], 200);
     }
 
-    // 4. Cập nhật
     public function update(Request $request, $id)
     {
         $user = User::find($id);
         if (!$user)
             return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
 
+        // Validate Update (Chú ý: email unique ngoại trừ chính user này)
+        $validator = Validator::make($request->all(), [
+            'email' => ['required', 'email', Rule::unique('user')->ignore($user->id)],
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
         $user->name = $request->name;
         $user->email = $request->email;
         $user->phone = $request->phone;
-        $user->username = $request->username;
-        $user->roles = $request->roles;
-        $user->status = $request->status;
+        if($request->username) $user->username = $request->username;
+        if($request->roles) $user->roles = $request->roles;
+        if($request->status) $user->status = $request->status;
+        
         $user->updated_at = now();
-        $user->updated_by = 1;
+        $user->updated_by = Auth::id() ?? 1;
 
-        // Nếu người dùng nhập password mới thì đổi, không thì giữ nguyên
+        // Đổi password nếu có nhập
         if ($request->filled('password')) {
             $user->password = Hash::make($request->password);
         }
 
         // Upload Avatar mới
-        if ($request->hasFile('avatar')) {
-            $oldPath = public_path('images/user/' . $user->avatar);
-            if ($user->avatar && file_exists($oldPath))
+        if ($request->hasFile('image')) {
+            // Xóa ảnh cũ
+            $oldPath = public_path('images/user/' . $user->image);
+            if ($user->image && file_exists($oldPath)) {
                 unlink($oldPath);
+            }
 
-            $file = $request->file('avatar');
+            $file = $request->file('image');
             $ext = $file->getClientOriginalExtension();
             $filename = time() . '.' . $ext;
             $file->move(public_path('images/user'), $filename);
-            $user->avatar = $filename;
+            $user->image = $filename;
         }
 
         $user->save();
@@ -183,16 +205,17 @@ class UserController extends Controller
         return response()->json(['success' => true, 'message' => 'Cập nhật thành công', 'data' => $user], 200);
     }
 
-    // 5. Xóa
     public function destroy($id)
     {
         $user = User::find($id);
         if (!$user)
             return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
 
-        $path = public_path('images/user/' . $user->avatar);
-        if ($user->avatar && file_exists($path))
+        // Xóa ảnh
+        $path = public_path('images/user/' . $user->image);
+        if ($user->image && file_exists($path)) {
             unlink($path);
+        }
 
         $user->delete();
         return response()->json(['success' => true, 'message' => 'Xóa thành công'], 200);
