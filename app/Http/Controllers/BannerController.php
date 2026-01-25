@@ -1,25 +1,18 @@
 <?php
-
 namespace App\Http\Controllers;
-
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Banner; // Nhớ import Model
-
 class BannerController extends Controller
 {
-    // 1. GET: Lấy danh sách
     public function index()
     {
         $banners = Banner::where('status', '!=', 0)
             ->orderBy('sort_order', 'ASC')
             ->orderBy('id', 'DESC')
             ->get();
-
         return response()->json(['success' => true, 'message' => 'Tải dữ liệu thành công', 'data' => $banners], 200);
     }
-
-    // 2. POST: Thêm mới (Có upload ảnh)
     public function store(Request $request)
     {
         $banner = new Banner();
@@ -31,8 +24,6 @@ class BannerController extends Controller
         $banner->status = $request->status ?? 1;
         $banner->created_at = now();
         $banner->created_by = 1;
-
-        // Upload hình ảnh
         if ($request->hasFile('image')) {
             $file = $request->file('image');
             $extension = $file->getClientOriginalExtension();
@@ -40,13 +31,9 @@ class BannerController extends Controller
             $file->move(public_path('images/banner'), $filename);
             $banner->image = $filename;
         }
-
         $banner->save();
-
         return response()->json(['success' => true, 'message' => 'Thêm thành công', 'data' => $banner], 201);
     }
-
-    // 3. GET: Chi tiết
     public function show($id)
     {
         $banner = Banner::find($id);
@@ -55,15 +42,12 @@ class BannerController extends Controller
         }
         return response()->json(['success' => true, 'data' => $banner], 200);
     }
-
-    // 4. PUT: Cập nhật
     public function update(Request $request, $id)
     {
         $banner = Banner::find($id);
         if (!$banner) {
             return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
         }
-
         $banner->name = $request->name;
         $banner->link = $request->link;
         $banner->position = $request->position ?? $banner->position;
@@ -72,34 +56,24 @@ class BannerController extends Controller
         $banner->status = $request->status ?? $banner->status;
         $banner->updated_at = now();
         $banner->updated_by = 1;
-
         if ($request->hasFile('image')) {
-            // Xóa ảnh cũ nếu có
             $oldPath = public_path('images/banner/' . $banner->image);
             if ($banner->image && file_exists($oldPath)) unlink($oldPath);
-
             $file = $request->file('image');
             $ext = $file->getClientOriginalExtension();
             $filename = time() . '.' . $ext;
             $file->move(public_path('images/banner'), $filename);
             $banner->image = $filename;
         }
-
         $banner->save();
-
         return response()->json(['success' => true, 'message' => 'Cập nhật thành công', 'data' => $banner], 200);
     }
-
-    // 5. DELETE: Xóa
     public function destroy($id)
     {
         $banner = Banner::find($id);
         if (!$banner) return response()->json(['success' => false, 'message' => 'Không tìm thấy'], 404);
-
-        // Xóa ảnh
         $path = public_path('images/banner/' . $banner->image);
         if ($banner->image && file_exists($path)) unlink($path);
-
         $banner->delete();
         return response()->json(['success' => true, 'message' => 'Xóa thành công'], 200);
     }

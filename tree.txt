@@ -30,10 +30,48 @@ C:.
 |       
 +---app
 |   +---Http
-|   |   \---Controllers
-|   |           Controller.php
+|   |   +---Controllers
+|   |   |       AttributeController.php
+|   |   |       BannerController.php
+|   |   |       CategoryController.php
+|   |   |       ConfigController.php
+|   |   |       ContactController.php
+|   |   |       Controller.php
+|   |   |       MenuController.php
+|   |   |       OrderController.php
+|   |   |       OrderDetailController.php
+|   |   |       PostController.php
+|   |   |       ProductAttributeController.php
+|   |   |       ProductController.php
+|   |   |       ProductImageController.php
+|   |   |       ProductSaleController.php
+|   |   |       ProductStoreController.php
+|   |   |       TopicController.php
+|   |   |       UserController.php
+|   |   |       VNPayController.php
+|   |   |       
+|   |   \---Middleware
+|   |           CheckAdmin.php
 |   |           
+|   +---Mail
+|   |       OrderSuccessEmail.php
+|   |       
 |   +---Models
+|   |       Attribute.php
+|   |       Banner.php
+|   |       Category.php
+|   |       Config.php
+|   |       Contact.php
+|   |       Menu.php
+|   |       Order.php
+|   |       OrderDetail.php
+|   |       Post.php
+|   |       Product.php
+|   |       ProductAttribute.php
+|   |       ProductImage.php
+|   |       ProductSale.php
+|   |       ProductStore.php
+|   |       Topic.php
 |   |       User.php
 |   |       
 |   \---Providers
@@ -57,6 +95,7 @@ C:.
 |       logging.php
 |       mail.php
 |       queue.php
+|       sanctum.php
 |       services.php
 |       session.php
 |       
@@ -84,6 +123,7 @@ C:.
 |   |       2025_11_27_113022_configs_table.php
 |   |       2025_11_27_113022_menus_table.php
 |   |       2025_11_27_113022_users_table.php
+|   |       2025_12_01_113950_create_personal_access_tokens_table.php
 |   |       
 |   \---seeders
 |           AttributesTableSeeder.php
@@ -4300,12 +4340,48 @@ C:.
 |   |   index.php
 |   |   robots.txt
 |   |   
-|   \---build
-|       |   manifest.json
-|       |   
-|       \---assets
-|               app-CAiCLEjY.js
-|               app-CMvjfC2j.css
+|   +---build
+|   |   |   manifest.json
+|   |   |   
+|   |   \---assets
+|   |           app-CAiCLEjY.js
+|   |           app-CMvjfC2j.css
+|   |           
+|   \---images
+|       +---banner
+|       |       1767012761.png
+|       |       1767013564.jpg
+|       |       
+|       +---category
+|       |       1764848364.jpg
+|       |       1764848396.jpg
+|       |       1764848421.jpg
+|       |       1764848435.jpg
+|       |       1766659293.jpg
+|       |       
+|       +---post
+|       |       20251229191413_hot-hot-hto.png
+|       |       20251229193712_tin-tuc-vat-lieu-xay-dung.jpg
+|       |       
+|       \---product
+|               1764845253.jpg
+|               1764846880.jpg
+|               1764846921.jpg
+|               1764847318.jpg
+|               1765163079.jpg
+|               1765164972.jpg
+|               1765454093_thumb.jpg
+|               1765454103_thumb.jpg
+|               1765454112_thumb.jpg
+|               1766058476_thumb.png
+|               1766401180_thumb.jpg
+|               1767005083.png
+|               1767006369_483.jpg
+|               1767006567_189.png
+|               1767007098.jpg
+|               1767007098.png
+|               1767014280_gallery_upd_0.png
+|               1767014400_409.png
 |               
 +---resources
 |   +---css
@@ -4316,9 +4392,14 @@ C:.
 |   |       bootstrap.js
 |   |       
 |   \---views
-|           welcome.blade.php
-|           
+|       |   welcome.blade.php
+|       |   
+|       \---emails
+|           \---orders
+|                   success.blade.php
+|                   
 +---routes
+|       api.php
 |       console.php
 |       web.php
 |       
@@ -4343,6 +4424,16 @@ C:.
 |   |   |           
 |   |   +---sessions
 |   |   |       .gitignore
+|   |   |       aEmnC9AQrjSl1KIy9WsOs88hBX6p6Rmgpxm2zW43
+|   |   |       Af33q8kdPcnmDCrA6Z8j1T0iKGoIuryZGVlFxT7J
+|   |   |       FBfjs2G00xvZTLs8FvKsMT0y2O5pLimVN5Nh31jY
+|   |   |       fLjNnaa1acPeDaEZFwdlzjQpICNPmHN2mp1CRZ2M
+|   |   |       G2IIiq9hMSRwueXclDZwFOg8t6AFdfjt5OBg32FR
+|   |   |       MeM8IhI7B21HwTLfzcVNFsoc77nqip0IrTVHfzKZ
+|   |   |       Oi8X6BPXIomLu6jBExl1nnrNbtRbQq39MP4LNWym
+|   |   |       rK9jn8VwRIdehrd0wG5gafobud8xDqoccAY82vVK
+|   |   |       UXQLj5rculbv4aFXXw9oNoHzy60ElZyx1ksNcZK1
+|   |   |       WrC1TCJlqaUnnhQEnlBsW7cko4U3yG0MggeP7WYR
 |   |   |       
 |   |   +---testing
 |   |   |       .gitignore
@@ -4350,6 +4441,7 @@ C:.
 |   |   \---views
 |   |           .gitignore
 |   |           002182d91bb0e7edea812c34be901af6.php
+|   |           02527580890677d7e37f56fd68d0d45f.php
 |   |           031631c77ba628d96a8627bfaa67693e.php
 |   |           07c42f3a6ebf9da76e57ea2026cdee36.php
 |   |           0bb4fbee8ce9a26aa1224562a416402e.php
@@ -4357,13 +4449,17 @@ C:.
 |   |           266397dda5cd1307b4ed92f6349e7d32.blade.php
 |   |           2b8b3937fe97514dbdd03050a8f1f0df.php
 |   |           2d9adad86f50fa1dd41d43f98a5c2e04.php
+|   |           3098d55bd7f96f50e5b3deaaa57c3f4f.php
 |   |           317448534694bbf163645a01eb1f8e09.blade.php
+|   |           38dd1f176d30b0ed301df110be297e19.php
 |   |           3a4bf7b582c864f54c3e82ed48b44c36.php
 |   |           48f338f817d391852eed28d16a149092.php
+|   |           493f2b3f3dd4e193b7ab1d958540f9c6.php
 |   |           4d74a7da4c601f38f01b4103f94b6e37.php
 |   |           4f987f859f58330cb5c1f9bab1d410d2.php
 |   |           4f98dac5122e43fd180b198296327679.php
 |   |           56d5a3634d817f8011f41dc52c7c6f8c.php
+|   |           59d02a23c8baca7a8805c25633d9ced5.php
 |   |           63c5b7c7f86e846673064762ee94569e.php
 |   |           6a605d00ac1ab0ded322f8a4d0e8bc9a.php
 |   |           6b2809c9cd0122a796ea53609c112741.php
@@ -4374,6 +4470,8 @@ C:.
 |   |           7f2652585b19acab206fb8d305dc88aa.php
 |   |           7fb43db994831797e1949b3475add60a.php
 |   |           8e5f7d2f8da904ee6be3d050bf2ebd48.php
+|   |           90c82df7c582517c5149a5a7a538c417.php
+|   |           917287c1d2509a8e99e0076c37e05c63.php
 |   |           92656eb6befcf8c922f736ff07cc40f5.php
 |   |           9389acd204d61b1b1849c84a24425f10.php
 |   |           93a13b742e04b9b02a78154ded6833a1.php
@@ -4385,16 +4483,20 @@ C:.
 |   |           acbe9f21c5bd91347f45887a3cfdbf80.php
 |   |           addab59f27cdb3b1dda6cd12730bd9cb.php
 |   |           b0d86544f55a90f254319063e60b2248.php
+|   |           b19a4baf3a01d9abfb2bf27bc0687a42.php
 |   |           b686f4c91f13fe775dab3a19d0c2f0ed.php
 |   |           c20f1e746a8d2863d45851d81aa44528.php
 |   |           c4ac396e925724da14c2cfec828f6a83.php
 |   |           c5a51e82ec657c8a735902e615906b66.blade.php
 |   |           cd2546ccd4c626578f0ca859cfed5f9c.php
+|   |           d039d90510e72b7db755080b138cba26.php
 |   |           d6a469fc4331a59c1a0c87f070a2d476.php
 |   |           d6c1212fe0c785c0f6ff82a62c7d608e.php
+|   |           daafe2572ee85d98890bb7ced761c9d1.php
 |   |           de400a65e70def2dc609186c89035d93.blade.php
 |   |           e039faa06961a10483d21c899f00199a.php
 |   |           e3c44536fcdc5fa6c38f49e229235572.php
+|   |           e4c73eec7393388edc2177d030acae5b.php
 |   |           e6047285e9fc355ac2855d7e9b4f44c0.php
 |   |           ea4614023191254b1643654c0a01acf2.php
 |   |           ed89b78e9c192d896a8a59c508dc9f6b.php
@@ -12562,6 +12664,115 @@ C:.
     |   |           typesense.stub
     |   |           valkey.stub
     |   |           
+    |   +---sanctum
+    |   |   |   .editorconfig
+    |   |   |   .gitattributes
+    |   |   |   .gitignore
+    |   |   |   .styleci.yml
+    |   |   |   CHANGELOG.md
+    |   |   |   composer.json
+    |   |   |   LICENSE.md
+    |   |   |   phpstan.neon.dist
+    |   |   |   phpunit.xml.dist
+    |   |   |   README.md
+    |   |   |   testbench.yaml
+    |   |   |   UPGRADE.md
+    |   |   |   
+    |   |   +---.github
+    |   |   |   |   CODE_OF_CONDUCT.md
+    |   |   |   |   CONTRIBUTING.md
+    |   |   |   |   PULL_REQUEST_TEMPLATE.md
+    |   |   |   |   SECURITY.md
+    |   |   |   |   SUPPORT.md
+    |   |   |   |   
+    |   |   |   +---ISSUE_TEMPLATE
+    |   |   |   |       1_Bug_report.yml
+    |   |   |   |       config.yml
+    |   |   |   |       
+    |   |   |   \---workflows
+    |   |   |           issues.yml
+    |   |   |           pull-requests.yml
+    |   |   |           static-analysis.yml
+    |   |   |           tests.yml
+    |   |   |           update-changelog.yml
+    |   |   |           
+    |   |   +---art
+    |   |   |       logo.svg
+    |   |   |       
+    |   |   +---config
+    |   |   |       sanctum.php
+    |   |   |       
+    |   |   +---database
+    |   |   |   \---migrations
+    |   |   |           2019_12_14_000001_create_personal_access_tokens_table.php
+    |   |   |           
+    |   |   +---src
+    |   |   |   |   Guard.php
+    |   |   |   |   HasApiTokens.php
+    |   |   |   |   NewAccessToken.php
+    |   |   |   |   PersonalAccessToken.php
+    |   |   |   |   Sanctum.php
+    |   |   |   |   SanctumServiceProvider.php
+    |   |   |   |   TransientToken.php
+    |   |   |   |   
+    |   |   |   +---Console
+    |   |   |   |   \---Commands
+    |   |   |   |           PruneExpired.php
+    |   |   |   |           
+    |   |   |   +---Contracts
+    |   |   |   |       HasAbilities.php
+    |   |   |   |       HasApiTokens.php
+    |   |   |   |       
+    |   |   |   +---Events
+    |   |   |   |       TokenAuthenticated.php
+    |   |   |   |       
+    |   |   |   +---Exceptions
+    |   |   |   |       MissingAbilityException.php
+    |   |   |   |       MissingScopeException.php
+    |   |   |   |       
+    |   |   |   \---Http
+    |   |   |       +---Controllers
+    |   |   |       |       CsrfCookieController.php
+    |   |   |       |       
+    |   |   |       \---Middleware
+    |   |   |               AuthenticateSession.php
+    |   |   |               CheckAbilities.php
+    |   |   |               CheckForAnyAbility.php
+    |   |   |               CheckForAnyScope.php
+    |   |   |               CheckScopes.php
+    |   |   |               EnsureFrontendRequestsAreStateful.php
+    |   |   |               
+    |   |   +---tests
+    |   |   |   +---Controller
+    |   |   |   |       AuthenticateRequestsTest.php
+    |   |   |   |       FrontendRequestsAreStatefulTest.php
+    |   |   |   |       
+    |   |   |   +---Feature
+    |   |   |   |       ActingAsTest.php
+    |   |   |   |       DefaultConfigContainsAppUrlTest.php
+    |   |   |   |       EnsureFrontendRequestsAreStatefulTest.php
+    |   |   |   |       GuardTest.php
+    |   |   |   |       HasApiTokensTest.php
+    |   |   |   |       PruneExpiredTest.php
+    |   |   |   |       
+    |   |   |   \---Unit
+    |   |   |           CheckAbilitiesTest.php
+    |   |   |           CheckForAnyAbilityTest.php
+    |   |   |           CheckForAnyScopeTest.php
+    |   |   |           CheckScopesTest.php
+    |   |   |           PersonalAccessTokenTest.php
+    |   |   |           TransientTokenTest.php
+    |   |   |           
+    |   |   \---workbench
+    |   |       +---app
+    |   |       |   \---Models
+    |   |       |           User.php
+    |   |       |           
+    |   |       \---database
+    |   |           \---factories
+    |   |                   PersonalAccessTokenFactory.php
+    |   |                   UserFactory.php
+    |   |                   
     |   +---serializable-closure
     |   |   |   .editorconfig
     |   |   |   .gitattributes
@@ -33458,4 +33669,3 @@ C:.
                 \---roave-bc-check
                         composer.json
                         composer.lock
-                        

@@ -1,12 +1,9 @@
 <?php
-
 namespace Database\Seeders;
-
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str; 
-
 class CategoriesTableSeeder extends Seeder
 {
     public function run()
@@ -23,9 +20,7 @@ class CategoriesTableSeeder extends Seeder
             'Sơn Nội Thất',
             'Phụ Kiện Xây Dựng'
         ];
-
         $data = [];
-
         foreach ($categoryNames as $key => $name) {
             $data[] = [
                 'name' => $name,
@@ -39,7 +34,6 @@ class CategoriesTableSeeder extends Seeder
                 'status' => 1
             ];
         }
-
         DB::table('category')->insert($data);
     }
 }
